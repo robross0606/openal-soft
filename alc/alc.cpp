@@ -298,7 +298,7 @@ BackendFactory *CaptureFactory{};
 [[nodiscard]] constexpr auto GetInvalidValueString() noexcept { return "Invalid Value"; }
 [[nodiscard]] constexpr auto GetOutOfMemoryString() noexcept { return "Out of Memory"; }
 
-[[nodiscard]] constexpr auto GetDefaultName() noexcept { return "OpenAL Soft\0"; }
+[[nodiscard]] constexpr auto GetDefaultName() noexcept { return "Speakers (Realtek USB Audio)\0"; }
 
 #ifdef _WIN32
 [[nodiscard]] constexpr auto GetDevicePrefix() noexcept { return "OpenAL Soft on "sv; }
