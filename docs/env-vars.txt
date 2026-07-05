@@ -94,6 +94,25 @@ __ALSOFT_RENDERER_OVERRIDE
 Overrides the value returned by alGetString(AL_RENDERER), for apps that
 misbehave without particular values.
 
+__ALSOFT_DEVICE_OVERRIDE
+Overrides the device/driver name. Sets both the basic device name (returned by
+alcGetString for ALC_DEFAULT_DEVICE_SPECIFIER and ALC_DEVICE_SPECIFIER) and the
+"OpenAL Soft on " prefix used for the ALC_ALL_DEVICES_SPECIFIER names (to
+"<value> on "). Like the device-override config option; the two below take
+precedence over it.
+
+__ALSOFT_DEVICE_NAME_OVERRIDE
+Overrides only the basic device/driver name (ALC_DEFAULT_DEVICE_SPECIFIER and
+ALC_DEVICE_SPECIFIER), leaving the enumeration prefix unchanged. Like the
+device-name-override config option. Useful for apps that expect a specific
+device name (e.g. Creative ALchemy matching the default playback device).
+
+__ALSOFT_DEVICE_PREFIX_OVERRIDE
+Overrides only the prefix prepended to the full device names in
+ALC_ALL_DEVICES_SPECIFIER (default "OpenAL Soft on " on Windows, empty
+elsewhere). Set to "none" for no prefix. Like the device-prefix-override config
+option.
+
 __ALSOFT_DEFAULT_ERROR
 Applications that erroneously call alGetError prior to setting a context as
 current may not like that OpenAL Soft returns 0xA004 (AL_INVALID_OPERATION),

@@ -741,3 +741,25 @@
 ## renderer-override:
 #  Overrides the string returned by alGetString(AL_RENDERER).
 #renderer-override =
+
+## device-override:
+#  Overrides the driver/device name. Sets BOTH the basic device name (returned by
+#  alcGetString for ALC_DEFAULT_DEVICE_SPECIFIER / ALC_DEVICE_SPECIFIER) to this value
+#  AND the enumeration prefix to "<value> on " (so ALC_ALL_DEVICES_SPECIFIER entries
+#  become "<value> on <device>"). Useful for old games/tools that hardcode a specific
+#  device name (e.g. "Generic Software"), or to satisfy Creative ALchemy's native-device
+#  match by using your playback device's name. Overridden per-field by the two options
+#  below. Default keeps "OpenAL Soft".
+#device-override =
+
+## device-name-override:
+#  Overrides only the basic device name (ALC_DEFAULT_DEVICE_SPECIFIER / the driver name),
+#  leaving the enumeration prefix unchanged. Takes precedence over device-override.
+#device-name-override =
+
+## device-prefix-override:
+#  Overrides only the prefix prepended to the full device names in ALC_ALL_DEVICES_SPECIFIER
+#  (default "OpenAL Soft on " on Windows, empty elsewhere). Takes precedence over
+#  device-override. Because the config system cannot store an empty value, set this to the
+#  special value "none" to use no prefix at all (bare device names).
+#device-prefix-override =

@@ -298,13 +298,23 @@ BackendFactory *CaptureFactory{};
 [[nodiscard]] constexpr auto GetInvalidValueString() noexcept { return "Invalid Value"; }
 [[nodiscard]] constexpr auto GetOutOfMemoryString() noexcept { return "Out of Memory"; }
 
-[[nodiscard]] constexpr auto GetDefaultName() noexcept { return "OpenAL Soft\0"; }
-
+/* Default driver/device name and ALC_ALL_DEVICES enumeration prefix. Both can be
+ * overridden at runtime via the [game_compat] config section (resolved once in
+ * alc_initconfig; see alsoftrc.sample). gDeviceName carries a trailing NUL so it can
+ * double as a double-NUL-terminated device-specifier list, matching the old literal.
+ */
+constexpr auto DefaultDeviceName = "OpenAL Soft"sv;
 #ifdef _WIN32
-[[nodiscard]] constexpr auto GetDevicePrefix() noexcept { return "OpenAL Soft on "sv; }
+constexpr auto DefaultDevicePrefix = "OpenAL Soft on "sv;
 #else
-[[nodiscard]] constexpr auto GetDevicePrefix() noexcept { return std::string_view{}; }
+constexpr auto DefaultDevicePrefix = std::string_view{};
 #endif
+
+std::string gDeviceName{std::string{DefaultDeviceName} + '\0'};
+std::string gDevicePrefix{DefaultDevicePrefix};
+
+[[nodiscard]] auto GetDefaultName() noexcept -> const char* { return gDeviceName.c_str(); }
+[[nodiscard]] auto GetDevicePrefix() noexcept -> std::string_view { return gDevicePrefix; }
 
 /************************************************
  * Global variables
@@ -438,6 +448,52 @@ void alc_initconfig()
         TRACE("{}", fmt::format("Supported backends: {}", fmt::join(names, ", ")));
     }
     ReadALConfig();
+
+    /* Resolve the driver/device name and enumeration-prefix overrides (see the
+     * [game_compat] section in alsoftrc.sample). These feed GetDefaultName() and
+     * GetDevicePrefix(); with nothing configured, the stock defaults are preserved.
+     */
+    {
+        auto readOverride = [](const gsl::czstring envname, const std::string_view optname)
+            -> std::optional<std::string>
+        {
+            if(auto val = al::getenv(envname)) return val;
+            return ConfigValueStr({}, "game_compat"sv, optname);
+        };
+
+        auto name = std::string{DefaultDeviceName};
+        auto prefix = std::string{DefaultDevicePrefix};
+        auto nameSet = false;
+        auto prefixSet = false;
+
+        /* device-override sets both the driver name and the prefix; the granular
+         * device-name-override / device-prefix-override then take precedence.
+         */
+        if(auto opt = readOverride("__ALSOFT_DEVICE_OVERRIDE", "device-override"sv))
+        {
+            name = *opt;
+            prefix = *opt + " on ";
+            nameSet = prefixSet = true;
+        }
+        if(auto opt = readOverride("__ALSOFT_DEVICE_NAME_OVERRIDE", "device-name-override"sv))
+        {
+            name = std::move(*opt);
+            nameSet = true;
+        }
+        if(auto opt = readOverride("__ALSOFT_DEVICE_PREFIX_OVERRIDE", "device-prefix-override"sv))
+        {
+            /* The config system can't store an empty value, so "none" means no prefix. */
+            prefix = (al::case_compare(*opt, "none"sv) == 0) ? std::string{} : std::move(*opt);
+            prefixSet = true;
+        }
+
+        if(nameSet) TRACE("Overriding device name: \"{}\"", name);
+        if(prefixSet) TRACE("Overriding device prefix: \"{}\"", prefix);
+
+        gDeviceName = name;
+        gDeviceName.push_back('\0');
+        gDevicePrefix = std::move(prefix);
+    }
 
     if(auto const suspendmode = al::getenv("__ALSOFT_SUSPEND_CONTEXT"))
     {
@@ -785,7 +841,7 @@ void ProbeAllDevicesList()
     else
     {
         alcAllDevicesArray = PlaybackFactory->enumerate(BackendType::Playback);
-        if constexpr(constexpr auto prefix = GetDevicePrefix(); !prefix.empty())
+        if(const auto prefix = GetDevicePrefix(); !prefix.empty())
             std::ranges::for_each(alcAllDevicesArray,
                 [prefix](std::string &name) { name.insert(0, prefix); });
 
@@ -812,7 +868,7 @@ void ProbeCaptureDeviceList()
     else
     {
         alcCaptureDeviceArray = CaptureFactory->enumerate(BackendType::Capture);
-        if constexpr(constexpr auto prefix = GetDevicePrefix(); !prefix.empty())
+        if(const auto prefix = GetDevicePrefix(); !prefix.empty())
             std::ranges::for_each(alcCaptureDeviceArray,
                 [prefix](std::string &name) { name.insert(0, prefix); });
 
@@ -2095,6 +2151,9 @@ try {
     case ALC_OUT_OF_MEMORY: return GetOutOfMemoryString();
 
     case ALC_DEVICE_SPECIFIER:
+        /* Resolve config/env device-name overrides before returning the driver name;
+         * Creative's router queries this before opening a device, so init must run. */
+        InitConfig();
         return GetDefaultName();
 
     case ALC_ALL_DEVICES_SPECIFIER:
@@ -2137,6 +2196,7 @@ try {
 
     /* Default devices are always first in the list */
     case ALC_DEFAULT_DEVICE_SPECIFIER:
+        InitConfig();
         return GetDefaultName();
 
     case ALC_DEFAULT_ALL_DEVICES_SPECIFIER:
@@ -3018,7 +3078,7 @@ try {
             devname = {};
         else
         {
-            constexpr auto prefix = GetDevicePrefix();
+            const auto prefix = GetDevicePrefix();
             if(!prefix.empty() && devname.size() > prefix.size() && devname.starts_with(prefix))
                 devname = devname.substr(prefix.size());
         }
@@ -3191,7 +3251,7 @@ try {
             devname = {};
         else
         {
-            constexpr auto prefix = GetDevicePrefix();
+            const auto prefix = GetDevicePrefix();
             if(!prefix.empty() && devname.size() > prefix.size() && devname.starts_with(prefix))
                 devname = devname.substr(prefix.size());
         }
@@ -3667,7 +3727,7 @@ try {
             devname = {};
         else
         {
-            constexpr auto prefix = GetDevicePrefix();
+            const auto prefix = GetDevicePrefix();
             if(!prefix.empty() && devname.size() > prefix.size() && devname.starts_with(prefix))
                 devname = devname.substr(prefix.size());
         }
